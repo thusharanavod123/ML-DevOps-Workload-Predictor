@@ -5,7 +5,7 @@ import sys
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend
+matplotlib.use('Agg')  # Required for CI/CD (no screen)
 import matplotlib.pyplot as plt
 
 # Add src to path so we can import the loader
@@ -32,8 +32,6 @@ else:
 # Load dataset (last 3 days)
 df = load_data('cloud_workload.csv')
 print(f"✅ Dataset: {len(df)} rows, shape {df.shape}")
-cpu_data = df['cpu_pct'].values # For plotting
-recent_data = df['cpu_pct'].tail(432).values.reshape(-1, 1)
 
 # Scale + predict
 scaler = MinMaxScaler()
@@ -57,23 +55,22 @@ else:
     print("✅ Normal operation")
 
 # Graph
-plt.figure(figsize=(10,4))
-plt.plot(cpu_data[-24:], label='Last 4hrs Actual')
-future = np.append(cpu_data[-6:], cpu_pred)
-plt.plot(range(22,28), future[-6:], 'r--', label='Predicted')
-plt.axhline(y=75, color='orange', ls=':', label='Scale threshold')
 plt.figure(figsize=(10, 4))
-plt.plot(recent_data[-24:].flatten(), label='Last 4hrs Actual')
-plt.plot([23, 24], [recent_data[-1, 0], cpu_pred], 'ro-', linewidth=3, label=f'Predicted: {cpu_pred:.1f}%')
-plt.axhline(75, color='orange', ls='--', label='Scale Threshold (75%)')
+
+# Plot last 24 points (approx 2 hours)
+recent_data = df['cpu_pct'].tail(24).values
+plt.plot(range(24), recent_data, label='Recent Actual')
+
+# Plot prediction connecting to the last point
+plt.plot([23, 24], [recent_data[-1], cpu_pred], 'ro--', linewidth=2, label=f'Predicted: {cpu_pred:.1f}%')
+
+plt.axhline(y=75, color='orange', linestyle=':', label='Scale Threshold (75%)')
 plt.ylabel('CPU %')
-plt.xlabel('10min Intervals')
+plt.xlabel('Time Steps')
+plt.title(f'ML Workload Prediction: {cpu_pred:.1f}%')
 plt.legend()
-plt.title(f'CPU Prediction: {cpu_pred:.1f}%')
-plt.savefig('prediction_graph.png')
-plt.title('ML Autoscaling Prediction')
+plt.grid(True, alpha=0.3)
 plt.savefig('prediction_graph.png', dpi=150, bbox_inches='tight')
 plt.close()
 
-print("✅ Pipeline complete!")
 print("✅ COMPLETE! Artifacts: prediction.txt + prediction_graph.png")
