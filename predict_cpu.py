@@ -3,10 +3,17 @@ import numpy as np
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+import sys
+import os
+
+# Add src to path so we can import the loader
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+from data_loader import load_data
 
 # Load your trained model + dataset
 model = load_model('lstm_model.h5')
 df = pd.read_csv('cloud_workload.csv')
+df = load_data('cloud_workload.csv')
 cpu_data = df['cpu_pct'].values[-432:]  # Last 3 days
 
 # Scale + Predict next 6 (60 mins)

@@ -1,3 +1,7 @@
+# ML-DevOps Workload Predictor
+
+This project implements a proactive auto-scaling framework using LSTM neural networks to predict Kubernetes workloads and optimize resource allocation.
+
 1️⃣ GAP ANALYSIS
 ├── Systematic literature review (40+ papers)
 ├── Identify reactive vs proactive gaps
