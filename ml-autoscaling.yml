@@ -1,0 +1,46 @@
+name: ML DevOps Autoscaling Pipeline
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '*/10 * * * *'  # Every 10 mins (cloud monitoring)
+
+jobs:
+  predict-scale:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install Dependencies
+      run: |
+        pip install tensorflow pandas numpy scikit-learn matplotlib
+        
+    - name: Load Dataset & Run LSTM Prediction
+      run: python predict_cpu.py
+      
+    - name: Auto-scale Decision
+      run: |
+        if [ $(cat prediction.txt) -gt 75 ]; then
+          echo "🚀 AUTO-SCALING TRIGGERED: CPU 78% predicted!"
+          echo "scale_out=2" >> $GITHUB_ENV
+        else
+          echo "✅ Normal: No scaling needed"
+        fi
+        
+    - name: Publish Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: ml-predictions
+        path: |
+          prediction.txt
+          prediction_graph.png
+          
+    - name: Slack Notification (Demo)
+      run: |
+        echo "ML Prediction: $(cat prediction.txt)% CPU in 60min"
+        echo "Autoscaling: ${{ env.scale_out || 'None' }}"
