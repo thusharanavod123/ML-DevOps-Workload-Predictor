@@ -3,41 +3,46 @@ import numpy as np
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
-import sys
-import os
 
-# Add src to path so we can import the loader
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
-from data_loader import load_data
+print("✅ Starting prediction...")
 
-# Load your trained model + dataset
-model = load_model('lstm_model.h5')
+# Verify files exist
+print("Files:", [f for f in os.listdir('.') if os.path.exists(f)])
+if not os.path.exists('lstm_model.h5'):
+    raise FileNotFoundError("❌ lstm_model.h5 missing!")
+if not os.path.exists('cloud_workload.csv'):
+    raise FileNotFoundError("❌ cloud_workload.csv missing!")
+
+# Load data (last 3 days = 432 rows)
 df = pd.read_csv('cloud_workload.csv')
-df = load_data('cloud_workload.csv')
-cpu_data = df['cpu_pct'].values[-432:]  # Last 3 days
+print(f"✅ Dataset loaded: {len(df)} rows")
+recent_data = df['cpu_pct'].tail(432).values.reshape(-1, 1)  # Last 3 days
 
-# Scale + Predict next 6 (60 mins)
+# Scale & predict
 scaler = MinMaxScaler()
-cpu_scaled = scaler.fit_transform(cpu_data.reshape(-1,1))
-X_pred = cpu_scaled[-6:].reshape(1,6,1)  # Last hour
-pred_scaled = model.predict(X_pred)[0][0]
+recent_scaled = scaler.fit_transform(recent_data)
+X_pred = recent_scaled[-6:].reshape(1, 6, 1)  # Last 60 mins
 
-# Inverse transform
+print("✅ Model loading...")
+model = load_model('lstm_model.h5')
+print("✅ Predicting...")
+pred_scaled = model.predict(X_pred, verbose=0)[0][0]
 cpu_pred = scaler.inverse_transform([[pred_scaled]])[0][0]
 
-print(f"PREDICTED CPU (60min): {cpu_pred:.1f}%")
+print(f"🎯 PREDICTED CPU (60min): {cpu_pred:.1f}%")
+
+# Save
 with open('prediction.txt', 'w') as f:
     f.write(f"{cpu_pred:.1f}")
 
-# Graph
-plt.figure(figsize=(10,4))
-plt.plot(cpu_data[-24:], label='Last 4hrs Actual')
-future = np.append(cpu_data[-6:], cpu_pred)
-plt.plot(range(22,28), future[-6:], 'r--', label='Predicted')
-plt.axhline(y=75, color='orange', ls=':', label='Scale threshold')
+# Quick graph
+plt.figure(figsize=(10,3))
+plt.plot(recent_data[-24:].flatten(), label='Last 4hrs')
+plt.plot([23, 24], [recent_data[-1][0], cpu_pred], 'r--o', label=f'Predicted {cpu_pred:.1f}%')
+plt.axhline(75, color='orange', ls=':', label='Scale @75%')
 plt.legend()
-plt.title(f'CPU Prediction: {cpu_pred:.1f}%')
-plt.savefig('prediction_graph.png')
+plt.title('Synthetic Workload Prediction')
+plt.savefig('prediction_graph.png', dpi=100, bbox_inches='tight')
 plt.close()
 
-print("✅ Pipeline complete!")
+print("✅ SUCCESS! Check prediction.txt & prediction_graph.png")
