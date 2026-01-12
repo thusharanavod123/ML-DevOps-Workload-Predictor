@@ -2,6 +2,12 @@ import pandas as pd
 import numpy as np
 import os
 import sys
+import warnings
+
+# Suppress TensorFlow logs and warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+warnings.filterwarnings('ignore')
+
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib
